@@ -8,7 +8,7 @@ from operator import attrgetter
 
 import numpy as np
 
-from mapify.config import dfc, chg_begining, chg_magbands, lc_map
+from mapify.config import dfc, chg_begining, chg_magbands, lc_map, nlcdxwalk
 
 
 __ordbegin = dt.datetime.strptime(chg_begining, '%Y-%m-%d').toordinal()
@@ -249,6 +249,57 @@ def landcover_conf(models: Sequence, ordinal: int, rank: int, dfcmap: dict=dfc,
         prev_class = curr_class
 
     return 0
+
+
+def crosswalk(inarr, xwalkmap: dict=nlcdxwalk) -> np.ndarray:
+    """
+    Cross-walks values in a data set to another set of values.
+
+    Args:
+        inarr: values to crosswalk
+        xwalkmap: mapping of how to crosswalk
+
+    Returns:
+        np array of cross-walked values
+    """
+
+    outarr = np.copy(inarr)
+
+    for old, new in xwalkmap.items():
+        outarr[outarr == old] = new
+
+    return outarr
+
+
+def lc_nodatafill(lc_arr: np.ndarray, lcc_arr: np.ndarray, nlcd: np.ndarray,
+                  xwalk: bool=True, xwalkmap: dict=nlcdxwalk,
+                  dfcmap: dict=dfc) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Fill areas without a model with NLCD data.
+
+    Args:
+        lc_arr: array of land cover values
+        lcc_arr: array of land cover confidence values
+        nlcd: array of NLCD values for same region
+        xwalk: boolean if the NLCD values need to be cross-walked
+        xwalkmap: mapping to on how to cross-walk the NLCD values
+        dfcmap: data format mapping, determines what values to assign for the
+            various conditionals that could occur
+
+    Returns:
+        filled land cover and land cover confidence arrays
+    """
+    if xwalk:
+        nlcd = crosswalk(nlcd, xwalkmap)
+
+    outlc = np.copy(lc_arr)
+    outlcc = np.copy(lcc_arr)
+
+    mask = outlc == dfcmap['lc_insuff']
+    outlc[mask] = nlcd[mask]
+    outlcc[mask] = dfcmap['lccf_nomodel']
+
+    return outlc, outlcc
 
 
 def lc_primary(models: Sequence, ordinal: int, dfcmap: dict=dfc,
