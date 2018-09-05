@@ -152,7 +152,7 @@ def landcover(models: Sequence, ordinal: int, rank: int, dfcmap: dict=dfc,
 
     # ord date before time series models -> cover back
     if fill_begin and ordinal < models[0].start_day:
-        return models[0].class_vals[np.argsort(classprobs(models[-1], ordinal))[rank]]
+        return models[0].class_vals[np.argsort(classprobs(models[0], ordinal))[rank]]
 
     # ord date after time series models -> cover forward
     if fill_end and ordinal > models[-1].end_day:
@@ -162,7 +162,7 @@ def landcover(models: Sequence, ordinal: int, rank: int, dfcmap: dict=dfc,
     prev_br = 0
     prev_class = 0
     for m in models:
-        curr_class = m.class_vals[np.argsort(classprobs(models[-1], ordinal))[rank]]
+        curr_class = m.class_vals[np.argsort(classprobs(m, ordinal))[rank]]
         # Date is contained within the model
         if m.start_day <= ordinal <= m.end_day:
             return curr_class
