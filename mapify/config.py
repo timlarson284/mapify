@@ -15,6 +15,15 @@ dfc = {'lc_insuff': 10,  # insufficient data, such as at the end of a time serie
        'lccf_afterbr': 214,
        }
 
+lc_map = {'develop': 1,
+          'ag': 2,
+          'grass': 3,
+          'tree': 4,
+          'water': 5,
+          'wetland': 6,
+          'snow': 7,
+          'barren': 8}
+
 chg_magbands = ('green', 'red', 'nir', 'swir1', 'swir2')
 chg_begining = '1982-01-01'
 

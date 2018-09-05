@@ -8,7 +8,7 @@ from operator import attrgetter
 
 import numpy as np
 
-from mapify.config import dfc, chg_begining, chg_magbands
+from mapify.config import dfc, chg_begining, chg_magbands, lc_map
 
 
 __ordbegin = dt.datetime.strptime(chg_begining, '%Y-%m-%d').toordinal()
@@ -74,6 +74,48 @@ def classprobs(model: CCDCModel, ordinal: int) -> tuple:
         return model.class_probs2
     else:
         return model.class_probs1
+
+
+def growth(model: CCDCModel, lc_mapping: dict=lc_map) -> bool:
+    """
+    Determine if the CCDC model represents a growth segment:
+    tree -> grass/shrub, indicates decline
+    or
+    grass/shrub -> tree, indicates growth
+
+    Args:
+        model: classified CCDCmodel namedtuple
+        lc_mapping: mapping of land cover names to values
+
+    Returns:
+        True if it is growth
+    """
+    if model.class_split:
+        if np.argmax(model.class_probs1) == lc_mapping['grass']:
+            return True
+
+    return False
+
+
+def decline(model: CCDCModel, lc_mapping: dict=lc_map) -> bool:
+    """
+    Determine if the CCDC model represents a growth segment:
+    tree -> grass/shrub, indicates decline
+    or
+    grass/shrub -> tree, indicates growth
+
+    Args:
+        model: classified CCDCmodel namedtuple
+        lc_mapping: mapping of land cover names to values
+
+    Returns:
+        True if it is decline
+    """
+    if model.class_split:
+        if np.argmax(model.class_probs1) == lc_mapping['tree']:
+            return True
+
+    return False
 
 
 def landcover(models: Sequence, ordinal: int, rank: int, dfcmap: dict=dfc,
@@ -190,6 +232,11 @@ def landcover_conf(models: Sequence, ordinal: int, rank: int, dfcmap: dict=dfc,
         curr_class = m.class_vals[probs[rank]]
         # Date is contained within the model
         if m.start_day <= ordinal <= m.end_day:
+            # Annualized classification mucking jazz
+            if growth(m):
+                return dfcmap['lcc_growth']
+            elif decline(m):
+                return dfcmap['lcc_decline']
             return int(probs[rank] * 100)
         # Same land cover fill
         elif fill_samelc and curr_class == prev_class and prev_end < ordinal < m.start_day:
