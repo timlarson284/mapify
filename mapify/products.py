@@ -477,7 +477,6 @@ def chg_lastbrk(models: Sequence, ordinal: int) -> int:
     if ordinal <= 0:
         return 0
 
-    break_dates = [m.break_day for m in models if m.change_prob == 1]
-    diff = filter(lambda x: x >= 0, [(ordinal - d) for d in break_dates])
+    diff = [(ordinal - m.break_day) for m in models if m.change_prob == 1]
 
-    return min(diff, default=0)
+    return min(filter(lambda x: x >= 0, diff), default=0)
