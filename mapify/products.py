@@ -7,6 +7,7 @@ from typing import Union, NamedTuple, Tuple, Sequence
 from operator import attrgetter
 
 import numpy as np
+from osgeo import gdal
 
 from mapify.config import dfc, chg_begining, chg_magbands, lc_map, nlcdxwalk
 
@@ -483,3 +484,26 @@ def chg_lastbrk(models: Sequence, ordinal: int) -> int:
     diff = [(ordinal - m.break_day) for m in models if m.change_prob == 1]
 
     return min(filter(lambda x: x >= 0, diff), default=0)
+
+
+def prodmap() -> dict:
+    """
+    Container function to hold the product mapping, showing which names map to
+    which functions and other such information ...
+
+    {'product name': [function, gdal data type],
+     ...}
+
+    Returns:
+        product mapping
+    """
+    return {'Change': [chg_doy, gdal.GDT_UInt16],
+            'LastChange': [chg_lastbrk, gdal.GDT_UInt16],
+            'SegLength': [chg_seglength, gdal.GDT_UInt16],
+            'ChangeMag': [chg_mag, gdal.GDT_Float32],
+            'Quality': [chg_modelqa, gdal.GDT_Byte],
+            'CoverPrim': [lc_primary, gdal.GDT_Byte],
+            'CoverSec': [lc_secondary, gdal.GDT_Byte],
+            'CoverConfPrim': [lc_primaryconf, gdal.GDT_Byte],
+            'CoverConfSec': [lc_secondaryconf, gdal.GDT_Byte],
+            'FromTo': [lc_fromto, gdal.GDT_Byte]}
