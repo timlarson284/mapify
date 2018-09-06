@@ -349,6 +349,9 @@ def lc_fromto(models: Sequence, ordinal: int) -> int:
     curr = landcover(models, ordinal, 1)
     prev = landcover(models, prev_yr.toordinal(), 1)
 
+    if prev == curr:
+        return curr
+
     return prev * 10 + curr
 
 
