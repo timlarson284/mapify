@@ -452,23 +452,20 @@ def chg_seglength(models: Sequence, ordinal: int, ordbegin: int=__ordbegin) -> i
     if ordinal <= 0:
         return 0
 
-    all_dates = [ordbegin]
+    diff = [ordinal - ordbegin]
     for m in models:
-        all_dates.append(m.start_day)
-        all_dates.append(m.end_day)
+        if ordinal > m.end_day:
+            diff.append(ordinal - m.end_day)
+        else:
+            diff.append(ordinal - m.start_day)
 
-    diff = [(ordinal - d) for d in all_dates if (ordinal - d) > 0]
-
-    # Before the ordbegin.
-    if not diff:
-        return 0
-
-    return min(diff)
+    return min(filter(lambda x: x >= 0, diff), default=0)
 
 
 def chg_lastbrk(models: Sequence, ordinal: int) -> int:
     """
     How long ago, in days, was the last spectral break.
+    0 if before the first break.
 
     Args:
         models: sorted sequence of CCDC namedtuples that represent the pixel history
@@ -480,14 +477,7 @@ def chg_lastbrk(models: Sequence, ordinal: int) -> int:
     if ordinal <= 0:
         return 0
 
-    break_dates = []
-    for m in models:
-        if m.change_prob == 1:
-            break_dates.append(m.break_day)
+    break_dates = [m.break_day for m in models if m.change_prob == 1]
+    diff = filter(lambda x: x >= 0, [(ordinal - d) for d in break_dates])
 
-    diff = [(ordinal - d) for d in break_dates if (ordinal - d) > 0]
-
-    if not diff:
-        return 0
-
-    return min(diff)
+    return min(diff, default=0)
