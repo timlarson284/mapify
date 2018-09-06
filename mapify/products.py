@@ -170,7 +170,7 @@ def landcover(models: Sequence, ordinal: int, rank: int, dfcmap: dict=dfc,
         elif fill_samelc and curr_class == prev_class and prev_end < ordinal < m.start_day:
             return curr_class
         # Different land cover fill, previous break -> current model
-        elif fill_difflc and prev_br < ordinal < m.start_day:
+        elif fill_difflc and prev_br <= ordinal < m.start_day:
             return curr_class
         # Different land cover fill, model end -> break
         elif fill_difflc and m.end_day < ordinal < m.break_day:
@@ -242,7 +242,7 @@ def landcover_conf(models: Sequence, ordinal: int, rank: int, dfcmap: dict=dfc,
         elif fill_samelc and curr_class == prev_class and prev_end < ordinal < m.start_day:
             return dfcmap['lccf_samelc']
         # Different land cover fill, prev model end -> current model start
-        elif fill_difflc and prev_end < ordinal < m.start_day:
+        elif fill_difflc and prev_end <= ordinal < m.start_day:
             return dfcmap['lccf_difflc']
 
         prev_end = m.end_day
@@ -266,7 +266,7 @@ def crosswalk(inarr, xwalkmap: dict=nlcdxwalk) -> np.ndarray:
     outarr = np.copy(inarr)
 
     for old, new in xwalkmap.items():
-        outarr[outarr == old] = new
+        outarr[inarr == old] = new
 
     return outarr
 
