@@ -3,10 +3,11 @@ Functions for producing product values from CCDC results.
 """
 
 import datetime as dt
-from typing import Union, NamedTuple, Tuple, Sequence
+from typing import Union, NamedTuple, Tuple, Sequence, List
 from operator import attrgetter
 
 import numpy as np
+from osgeo import gdal
 
 from mapify.config import dfc, chg_begining, chg_magbands, lc_map, nlcdxwalk
 
@@ -22,7 +23,7 @@ class BandModel(NamedTuple):
     magnitude: float
     rmse: float
     intercept: float
-    coeficients: Tuple
+    coefficients: Tuple
 
 
 class CCDCModel(NamedTuple):
@@ -127,7 +128,7 @@ def landcover(models: Sequence, ordinal: int, rank: int, dfcmap: dict=dfc,
 
     Args:
         models: sorted sequence of CCDC namedtuples that represent the pixel history
-        ordinal: date where we want cover for
+        ordinal: standard python ordinal starting on day 1 of year 1
         rank: which numeric rank to pull,
             1 - primary, 2- secondary, 3 - tertiary ...
         dfcmap: data format mapping, determines what values to assign for the
@@ -192,7 +193,7 @@ def landcover_conf(models: Sequence, ordinal: int, rank: int, dfcmap: dict=dfc,
 
     Args:
         models: sorted sequence of CCDC namedtuples that represent the pixel history
-        ordinal: date where we want cover for
+        ordinal: standard python ordinal starting on day 1 of year 1
         rank: which numeric rank to pull,
             1 - primary, 2- secondary, 3 - tertiary ...
         dfcmap: data format mapping, determines what values to assign for the
@@ -337,7 +338,7 @@ def lc_fromto(models: Sequence, ordinal: int) -> int:
 
     Args:
         models: sorted sequence of CCDC namedtuples that represent the pixel history
-        ordinal: date where we want cover for
+        ordinal: standard python ordinal starting on day 1 of year 1
 
     Returns:
         fromto value
@@ -349,6 +350,9 @@ def lc_fromto(models: Sequence, ordinal: int) -> int:
     curr = landcover(models, ordinal, 1)
     prev = landcover(models, prev_yr.toordinal(), 1)
 
+    if prev == curr:
+        return curr
+
     return prev * 10 + curr
 
 
@@ -359,7 +363,7 @@ def chg_doy(models: Sequence, ordinal: int) -> int:
 
     Args:
         models: sorted sequence of CCDC namedtuples that represent the pixel history
-        ordinal: date for a year that we want to know if change occurs in
+        ordinal: standard python ordinal starting on day 1 of year 1
 
     Returns:
         day of year or 0
@@ -389,7 +393,7 @@ def chg_mag(models: Sequence, ordinal: int, bands: Sequence=chg_magbands) -> flo
 
     Args:
         models: sorted sequence of CCDC namedtuples that represent the pixel history
-        ordinal: magnitude for a change, if it occurred in the year
+        ordinal: standard python ordinal starting on day 1 of year 1
         bands: spectral band names to perform the calculation over
 
     Returns:
@@ -420,7 +424,7 @@ def chg_modelqa(models: Sequence, ordinal: int) -> int:
 
     Args:
         models: sorted sequence of CCDC namedtuples that represent the pixel history
-        ordinal: magnitude for a change, if it occurred in the year
+        ordinal: standard python ordinal starting on day 1 of year 1
 
     Returns:
         curve_qa or 0
@@ -443,7 +447,7 @@ def chg_seglength(models: Sequence, ordinal: int, ordbegin: int=__ordbegin) -> i
 
     Args:
         models: sorted sequence of CCDC namedtuples that represent the pixel history
-        ordinal: magnitude for a change, if it occurred in the year
+        ordinal: standard python ordinal starting on day 1 of year 1
         ordbegin: when to start counting from
 
     Returns:
@@ -452,27 +456,24 @@ def chg_seglength(models: Sequence, ordinal: int, ordbegin: int=__ordbegin) -> i
     if ordinal <= 0:
         return 0
 
-    all_dates = [ordbegin]
+    diff = [ordinal - ordbegin]
     for m in models:
-        all_dates.append(m.start_day)
-        all_dates.append(m.end_day)
+        if ordinal > m.end_day:
+            diff.append(ordinal - m.end_day)
+        else:
+            diff.append(ordinal - m.start_day)
 
-    diff = [(ordinal - d) for d in all_dates if (ordinal - d) > 0]
-
-    # Before the ordbegin.
-    if not diff:
-        return 0
-
-    return min(diff)
+    return min(filter(lambda x: x >= 0, diff), default=0)
 
 
 def chg_lastbrk(models: Sequence, ordinal: int) -> int:
     """
     How long ago, in days, was the last spectral break.
+    0 if before the first break.
 
     Args:
         models: sorted sequence of CCDC namedtuples that represent the pixel history
-        ordinal: magnitude for a change, if it occurred in the year
+        ordinal: standard python ordinal starting on day 1 of year 1
 
     Returns:
         number of days
@@ -480,14 +481,112 @@ def chg_lastbrk(models: Sequence, ordinal: int) -> int:
     if ordinal <= 0:
         return 0
 
-    break_dates = []
+    diff = [(ordinal - m.break_day) for m in models if m.change_prob == 1]
+
+    return min(filter(lambda x: x >= 0, diff), default=0)
+
+
+def predict(band: BandModel, ordinal: int) -> float:
+    """
+    Predict the value at the given day.
+    Does no bounds checking.
+
+    Args:
+        band: individual CCDC band model
+        ordinal: standard python ordinal starting on day 1 of year 1
+
+    Returns:
+        predicted value
+    """
+    w = 2 * np.pi / 365.2425
+    c1, c2, c3, c4, c5, c6 = band.coefficients
+    return (c1 * np.cos(w * ordinal) + c2 * np.sin(w * ordinal) +
+            c3 * np.cos(2 * w * ordinal) + c4 * np.sin(2 * w * ordinal) +
+            c5 * np.cos(3 * w * ordinal) + c6 * np.sin(3 * w * ordinal)) + band.intercept
+
+
+def syntheticselect(models: Sequence, ordinal: int) -> CCDCModel:
+    """
+    Select a model to build predictions from.
+
+    Args:
+        models: sorted sequence of CCDC namedtuples that represent the pixel history
+        ordinal: standard python ordinal starting on day 1 of year 1
+
+    Returns:
+        model
+    """
+    if not models:
+        raise ValueError
+
+    # ord date before time series models -> cover back
+    if ordinal < models[0].start_day:
+        return models[0]
+
+    # ord date after time series models -> cover forward
+    if ordinal > models[-1].end_day:
+        return models[-1]
+
+    prev_end = 0
+    prev_br = 0
     for m in models:
-        if m.change_prob == 1:
-            break_dates.append(m.break_day)
+        # Date is contained within the model
+        if m.start_day <= ordinal <= m.end_day:
+            return m
+        elif prev_end < ordinal < m.start_day:
+            return m
+        elif prev_br <= ordinal < m.start_day:
+            return m
+        elif m.end_day < ordinal < m.break_day:
+            return m
 
-    diff = [(ordinal - d) for d in break_dates if (ordinal - d) > 0]
+        prev_end = m.end_day
+        prev_br = m.break_day
 
-    if not diff:
-        return 0
+    raise ValueError
 
-    return min(diff)
+
+def synthetic(models: Sequence, ordinal: int) -> List[float, float, float, float, float, float, float]:
+    """
+    Do the model predictions in order to produce fake imagery.
+
+    Args:
+        models: sorted sequence of CCDC namedtuples that represent the pixel history
+        ordinal: standard python ordinal starting on day 1 of year 1
+
+    Returns:
+        blue, green, red, nir, swir1, swir2, thermal values
+    """
+    model = syntheticselect(models, ordinal)
+
+    vals = []
+    for name in ('blue', 'green', 'red', 'nir', 'swir1', 'swir2', 'thermal'):
+        for band in model:
+            if band.name == name:
+                vals.append(predict(band, ordinal))
+
+    return vals
+
+
+def prodmap() -> dict:
+    """
+    Container function to hold the product mapping, showing which names map to
+    which functions and other such information ...
+
+    {'product name': [function, gdal data type],
+     ...}
+
+    Returns:
+        product mapping
+    """
+    return {'Change': [chg_doy, gdal.GDT_UInt16],
+            'LastChange': [chg_lastbrk, gdal.GDT_UInt16],
+            'SegLength': [chg_seglength, gdal.GDT_UInt16],
+            'ChangeMag': [chg_mag, gdal.GDT_Float32],
+            'Quality': [chg_modelqa, gdal.GDT_Byte],
+            'CoverPrim': [lc_primary, gdal.GDT_Byte],
+            'CoverSec': [lc_secondary, gdal.GDT_Byte],
+            'CoverConfPrim': [lc_primaryconf, gdal.GDT_Byte],
+            'CoverConfSec': [lc_secondaryconf, gdal.GDT_Byte],
+            'FromTo': [lc_fromto, gdal.GDT_Byte],
+            'Synthetic': [synthetic, gdal.GDT_UInt16]}
