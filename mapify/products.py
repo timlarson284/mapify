@@ -9,7 +9,7 @@ from operator import attrgetter
 import numpy as np
 from osgeo import gdal
 
-from mapify.config import dfc, chg_begining, chg_magbands, lc_map, nlcdxwalk
+from config import dfc, chg_begining, chg_magbands, lc_map, nlcdxwalk
 
 
 __ordbegin = dt.datetime.strptime(chg_begining, '%Y-%m-%d').toordinal()
@@ -23,7 +23,7 @@ class BandModel(NamedTuple):
     magnitude: float
     rmse: float
     intercept: float
-    coefficients: Tuple
+    coefficients: tuple
 
 
 class CCDCModel(NamedTuple):
@@ -32,15 +32,15 @@ class CCDCModel(NamedTuple):
     """
     start_day: int
     end_day: int
-    break_day: Union(int, None)
-    obs_count: Union(int, None)
-    change_prob: Union(float, None)
-    curve_qa: Union(int, None)
-    bands: Union(Tuple, None)
-    class_split: Union(str, None)
-    class_probs1: Union(Tuple, None)
-    class_probs2: Union(Tuple, None)
-    class_vals: Union(Tuple, None)
+    break_day: int
+    obs_count: int
+    change_prob: float
+    curve_qa: int
+    bands: tuple
+    class_split: int
+    class_probs1: tuple
+    class_probs2: tuple
+    class_vals: tuple
 
 
 def sortmodels(models: Sequence, key: str='start_day') -> list:
@@ -546,7 +546,7 @@ def syntheticselect(models: Sequence, ordinal: int) -> CCDCModel:
     raise ValueError
 
 
-def synthetic(models: Sequence, ordinal: int) -> List[float, float, float, float, float, float, float]:
+def synthetic(models: Sequence, ordinal: int) -> List[float]:
     """
     Do the model predictions in order to produce fake imagery.
 
