@@ -560,20 +560,16 @@ def syntheticselect(models: Sequence, ordinal: int) -> Union[CCDCModel, None]:
     if ordinal > models[-1].end_day:
         return models[-1]
 
-    prev_end = 0
     prev_br = 0
     for m in models:
         # Date is contained within the model
         if m.start_day <= ordinal <= m.end_day:
-            return m
-        elif prev_end < ordinal < m.start_day:
             return m
         elif prev_br <= ordinal < m.start_day:
             return m
         elif m.end_day < ordinal < m.break_day:
             return m
 
-        prev_end = m.end_day
         prev_br = m.break_day
 
     raise ValueError
@@ -655,7 +651,7 @@ def is_lc(name: str) -> bool:
     Returns:
         True if it is a land cover product
     """
-    return name in ('CoverPrim', 'CoverSec', 'FromTo')
+    return name in ('LC_Primary', 'LC_Secondary', 'LC_Change')
 
 
 def lc_color() -> gdal.ColorTable:
