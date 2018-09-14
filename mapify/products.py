@@ -632,16 +632,16 @@ def prodmap() -> dict:
     Returns:
         product mapping
     """
-    return {'Change': [chg_doy, gdal.GDT_UInt16],
-            'LastChange': [chg_lastbrk, gdal.GDT_UInt16],
-            'SegLength': [chg_seglength, gdal.GDT_UInt16],
-            'ChangeMag': [chg_mag, gdal.GDT_Float32],
-            'Quality': [chg_modelqa, gdal.GDT_Byte],
-            'CoverPrim': [lc_primary, gdal.GDT_Byte],
-            'CoverSec': [lc_secondary, gdal.GDT_Byte],
-            'CoverConfPrim': [lc_primaryconf, gdal.GDT_Byte],
-            'CoverConfSec': [lc_secondaryconf, gdal.GDT_Byte],
-            'FromTo': [lc_fromto, gdal.GDT_Byte],
+    return {'Chg_ChangeDay': [chg_doy, gdal.GDT_UInt16],
+            'Chg_LastChange': [chg_lastbrk, gdal.GDT_UInt16],
+            'Chg_SegLength': [chg_seglength, gdal.GDT_UInt16],
+            'Chg_ChangeMag': [chg_mag, gdal.GDT_Float32],
+            'Chg_Quality': [chg_modelqa, gdal.GDT_Byte],
+            'LC_Primary': [lc_primary, gdal.GDT_Byte],
+            'LC_Secondary': [lc_secondary, gdal.GDT_Byte],
+            'LC_PrimeConf': [lc_primaryconf, gdal.GDT_Byte],
+            'LC_SecondConf': [lc_secondaryconf, gdal.GDT_Byte],
+            'LC_Change': [lc_fromto, gdal.GDT_Byte],
             'Synthetic': [synthetic, gdal.GDT_UInt16]}
 
 
