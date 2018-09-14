@@ -24,7 +24,6 @@ lc_map = {'develop': 1,
           'snow': 7,
           'barren': 8}
 
-
 nlcdxwalk = {11: 5,
              12: 7,
              21: 1,
@@ -46,17 +45,11 @@ nlcdxwalk = {11: 5,
              90: 6,
              95: 6}
 
+band_names = ('blue', 'green', 'red', 'nir', 'swir1', 'swir2', 'thermal')
 
-chg_magbands = ('green', 'red', 'nir', 'swir1', 'swir2')
+chg_magbands = band_names[1:-1]
 chg_begining = '1982-01-01'
 
-# ts_start: '1982-01-01'
-# ts_stop: '2018-01-01'
-#
-# nodata: 0
-# disturbed: 9
-# series-end: 10
-#
 cu_tileaff = (-2565585, 150000, 0, 3314805, 0, -150000)
 cu_chipaff = (-2565585, 3000, 0, 3314805, 0, -3000)
 #
@@ -76,4 +69,4 @@ cu_chipaff = (-2565585, 3000, 0, 3314805, 0, -3000)
 #   xmax: 305655
 #   ymin: 1718895
 #
-# conus-wkt: 'PROJCS["Albers",GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378140,298.2569999999957,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433],AUTHORITY["EPSG","4326"]],PROJECTION["Albers_Conic_Equal_Area"],PARAMETER["standard_parallel_1",29.5],PARAMETER["standard_parallel_2",45.5],PARAMETER["latitude_of_center",23],PARAMETER["longitude_of_center",-96],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]]]'
+conuswkt = 'PROJCS["Albers",GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378140,298.2569999999957,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0],UNIT["degree",0.0174532925199433],AUTHORITY["EPSG","4326"]],PROJECTION["Albers_Conic_Equal_Area"],PARAMETER["standard_parallel_1",29.5],PARAMETER["standard_parallel_2",45.5],PARAMETER["latitude_of_center",23],PARAMETER["longitude_of_center",-96],PARAMETER["false_easting",0],PARAMETER["false_northing",0],UNIT["metre",1,AUTHORITY["EPSG","9001"]]]'
