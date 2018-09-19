@@ -52,6 +52,9 @@ def yarg(args: argparse.Namespace) -> argparse.Namespace:
         args.prods = ','.join(list(_productmap.keys()))
     if args.cpu < 1:
         args.cpu = 1
+    if args.dates == 'standard':
+        args.dates = ','.join([dt.date(year=yr, month=7, day=1).strftime('%Y-%m-%d')
+                               for yr in range(1985, 2018)])
 
     return args
 
@@ -82,7 +85,7 @@ def multi(args: argparse.Namespace) -> None:
                    args=(in_q, out_q, args),
                    name='Process-{}'.format(_)).start()
 
-    multiout(out_q, args.outdir, worker_cnt)
+    multiout(out_q, args.outdir, worker_cnt,  args)
 
 
 def enqueue(jdir: str, pdir: str, kill: int) -> mp.Queue:
@@ -109,7 +112,7 @@ def nlcdchip(path: str, chip_x: float, chip_y: float) -> np.ndarray:
 
 
 def neednlcd(name: str, fill_nomodel: bool) -> bool:
-    return name in ('CoverPrim', 'FromTo') and fill_nomodel
+    return name in ('LC_Primary', 'LC_Change') and fill_nomodel
 
 
 def worker(inq: mp.Queue, outq: mp.Queue, args: argparse.Namespace):
@@ -137,7 +140,7 @@ def worker(inq: mp.Queue, outq: mp.Queue, args: argparse.Namespace):
         kwargs = makekwargs(args)
 
         nlcd = None
-        if ('CoverPrim' in prods or 'FromTo' in prods) and args.fill_nomodel:
+        if ('LC_Primary' in prods or 'LC_Change' in prods) and args.fill_nomodel:
             nlcd = nlcdchip(args.nlcdpath, chip_x, chip_y).flatten()
             if args.xwalk:
                 nlcd = crosswalk(nlcd)
@@ -158,8 +161,11 @@ def worker(inq: mp.Queue, outq: mp.Queue, args: argparse.Namespace):
         outq.put((chip_x, chip_y, out))
 
 
-def filename(chip_x: float, chip_y: float, prod: str, date: str) -> str:
+def filename(chip_x: float, chip_y: float, prod: str, date: str, trunc_date: bool) -> str:
     h, v = determine_hv(chip_x, chip_y)
+
+    if trunc_date:
+        date = date.split('-')[0]
 
     return 'h{:02d}v{:02d}_{}_{}.tif'.format(h, v, prod, date.replace('-', ''))
 
@@ -221,15 +227,24 @@ def maketile(path: str, chip_x: float, chip_y: float, product: str) -> gdal.Data
     return create(path, 5000, 5000, aff, datatype, ct=ct, bands=bands)
 
 
-def makepath(root: str, chip_x: float, chip_y: float, prod: str, date: str) -> str:
-    return os.path.join(root, filename(chip_x, chip_y, prod, date))
+def makepath(root: str, chip_x: float, chip_y: float, prod: str, date: str, trunc_dates: bool) -> str:
+    return os.path.join(root, filename(chip_x, chip_y, prod, date, trunc_dates))
 
 
-def multiout(output_q, outdir, count):
+def multiout(output_q, outdir, count, cliargs):
+    log.debug('Worker count: %s', count)
     kill_cnt = 0
     dss = {}
     tot = 0
+
+    if not os.path.exists(outdir):
+        os.makedirs(outdir)
+
     while True:
+        if kill_cnt >= count:
+            log.debug('Shutting down output')
+            break
+
         chip_x, chip_y, out = output_q.get()
 
         if out == -1:
@@ -237,12 +252,9 @@ def multiout(output_q, outdir, count):
             log.debug('Kill count: %s', kill_cnt)
             continue
 
-        if kill_cnt >= count:
-            break
-
         for prod in out:
             for date in out[prod]:
-                outpath = makepath(outdir, chip_x, chip_y, prod, date)
+                outpath = makepath(outdir, chip_x, chip_y, prod, date, cliargs.trunc_dates)
 
                 if outpath not in dss:
                     # log.debug('Outpath not in keys: %s', outpath)
@@ -282,7 +294,8 @@ if __name__ == '__main__':
                         help='Output directory for GeoTiff maps')
     parser.add_argument('dates',
                         type=str,
-                        help='Comma separated list of dates in ISO-8601 to build the requested products for')
+                        help='Comma separated list of dates in ISO-8601 to build '
+                             'the requested products for, or standard for the standard LCMAP dates')
     parser.add_argument('prods',
                         type=str,
                         help='Comma separated list of products to build')
@@ -319,6 +332,11 @@ if __name__ == '__main__':
                         action='store_false',
                         default=True,
                         help='Turn off NLCD crosswalking if it has already been done')
+    parser.add_argument('--trunc-dates',
+                        dest='trunc_dates',
+                        action='store_true',
+                        default=False,
+                        help='Truncate the date on the filename to just the year')
     parser.add_argument('--cpu',
                         dest='cpu',
                         action='store',
