@@ -4,7 +4,8 @@
 # lc -> Land Cover layers
 # lcc -> Land Cover Confidence layers
 # lccf -> Land Cover Confidence layers (fill techniques)
-dfc = {'lc_insuff': 10,  # insufficient data, such as at the end of a time series
+dfc = {'lc_inbtw': 9,   # default value for between models
+       'lc_insuff': 10,  # insufficient data, such as at the end of a time series
        'lcc_growth': 151,
        'lcc_decline': 152,
        'lccf_nomodel': 201,

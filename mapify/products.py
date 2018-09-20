@@ -160,12 +160,16 @@ def landcover(models: Sequence, ordinal: int, rank: int, dfcmap: dict=_dfc,
         return dfcmap['lc_insuff']
 
     # ord date before time series models -> cover back
-    if fill_begin and ordinal < models[0].start_day:
-        return models[0].class_vals[np.argsort(-classprobs(models[0], ordinal))[rank]]
+    if ordinal < models[0].start_day:
+        if fill_begin:
+            return models[0].class_vals[np.argsort(-classprobs(models[0], ordinal))[rank]]
+        return dfcmap['lc_insuff']
 
     # ord date after time series models -> cover forward
-    if fill_end and ordinal > models[-1].end_day:
-        return models[-1].class_vals[np.argsort(-classprobs(models[-1], ordinal))[rank]]
+    if ordinal > models[-1].end_day:
+        if fill_end:
+            return models[-1].class_vals[np.argsort(-classprobs(models[-1], ordinal))[rank]]
+        return dfcmap['lc_insuff']
 
     prev_end = 0
     prev_br = 0
@@ -189,7 +193,7 @@ def landcover(models: Sequence, ordinal: int, rank: int, dfcmap: dict=_dfc,
         prev_br = m.break_day
         prev_class = curr_class
 
-    raise ValueError
+    return dfcmap['lc_inbtw']
 
 
 def landcover_conf(models: Sequence, ordinal: int, rank: int, dfcmap: dict=_dfc,
@@ -226,15 +230,19 @@ def landcover_conf(models: Sequence, ordinal: int, rank: int, dfcmap: dict=_dfc,
         return 0
 
     # ord date before time series models -> cover back
-    if fill_begin and ordinal < models[0].start_day:
-        return dfcmap['lccf_back']
+    if ordinal < models[0].start_day:
+        if fill_begin:
+            return dfcmap['lccf_back']
+        return 0
 
     # ord date after time series models -> cover forward
-    if fill_end and ordinal > models[-1].end_day:
-        if models[-1].change_prob == 1:
-            return dfcmap['lccf_afterbr']
+    if ordinal > models[-1].end_day:
+        if fill_end:
+            if models[-1].change_prob == 1:
+                return dfcmap['lccf_afterbr']
 
-        return dfcmap['lccf_forwards']
+            return dfcmap['lccf_forwards']
+        return 0
 
     prev_end = 0
     prev_class = 0
@@ -259,7 +267,7 @@ def landcover_conf(models: Sequence, ordinal: int, rank: int, dfcmap: dict=_dfc,
         prev_end = m.end_day
         prev_class = curr_class
 
-    raise ValueError
+    return 0
 
 
 def crosswalk(inarr: np.ndarray, xwalkmap: dict=_nlcdxwalk, **kwargs) -> np.ndarray:
