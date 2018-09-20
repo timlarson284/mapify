@@ -5,6 +5,7 @@ Functions for producing product values from CCDC results.
 import datetime as dt
 from typing import Union, NamedTuple, Tuple, Sequence, List
 from operator import attrgetter
+from functools import lru_cache
 
 import numpy as np
 from osgeo import gdal
@@ -61,7 +62,8 @@ def sortmodels(models: Sequence, key: str='start_day') -> list:
     return sorted(models, key=attrgetter(key))
 
 
-def classprobs(model: CCDCModel, ordinal: int) -> np.ndarray:
+@lru_cache()
+def modelprobs(model: CCDCModel, ordinal: int) -> np.ndarray:
     """
     Simple function to extract the class probabilities that go with the associated
     ordinal date. This function makes no assumptions on whether the date is
@@ -123,6 +125,85 @@ def decline(model: CCDCModel, lc_mapping: dict=_lc_map) -> bool:
     return False
 
 
+@lru_cache()
+def rankidx(model: CCDCModel, ordinal: int, rank: int) -> int:
+    """
+    Find the index of a given rank relative to the probabilities.
+
+    Args:
+        model: classified CCDCmodel namedtuple
+        ordinal: standard python ordinal starting on day 1 of year 1
+        rank: which numeric rank to pull,
+            0 - primary, 1- secondary, 2 - tertiary ...
+
+    Returns:
+        array index
+    """
+    # argsort is ascending, so -probs flips it to descending.
+    return np.argsort(-modelprobs(model, ordinal))[rank]
+
+
+@lru_cache()
+def modelprob(model: CCDCModel, ordinal: int, rank: int) -> float:
+    """
+    Provide the probability at the given rank (0, 1, 3 ...). This function
+    makes no assumptions on whether the date is actually contained within the
+    segment. It is simply used as a comparison against the class_split attribute
+    if it exists.
+
+    Args:
+        model: classified CCDCmodel namedtuple
+        ordinal: standard python ordinal starting on day 1 of year 1
+        rank: which numeric rank to pull,
+            0 - primary, 1- secondary, 2 - tertiary ...
+
+    Returns:
+        probability value at the rank
+    """
+    return modelprobs(model, ordinal)[rankidx(model, ordinal, rank)]
+
+
+@lru_cache()
+def scaleprob(prob: float, factor: float=100) -> int:
+    """
+    Provide consistent scaling of values into integer space. This maintains a
+    minimum value of 1.
+
+    Args:
+        prob: probability value, typically from 0 to 1
+        factor: scale factor
+
+    Returns:
+        scaled probability value
+    """
+    prob *= factor
+
+    if prob < 1:
+        return 1
+
+    return int(prob)
+
+
+@lru_cache()
+def modelclass(model: CCDCModel, ordinal: int, rank: int) -> int:
+    """
+    Provide the class value at the given rank (0, 1, 2, 3 ...). This function
+    makes no assumptions on whether the date is actually contained within the
+    segment. It is simply used as a comparison against the class_split attribute
+    if it exists.
+
+    Args:
+        model: classified CCDCmodel namedtuple
+        ordinal: standard python ordinal starting on day 1 of year 1
+        rank: which numeric rank to pull,
+            0 - primary, 1- secondary, 2 - tertiary ...
+
+    Returns:
+        class value at the rank
+    """
+    return model.class_vals[rankidx(model, ordinal, rank)]
+
+
 def landcover(models: Sequence, ordinal: int, rank: int, dfcmap: dict=_dfc,
               fill_begin: bool=True, fill_end: bool=True, fill_samelc: bool=True,
               fill_difflc: bool=True, fill_nodata: bool=True, fill_nodataval: int=None,
@@ -162,20 +243,20 @@ def landcover(models: Sequence, ordinal: int, rank: int, dfcmap: dict=_dfc,
     # ord date before time series models -> cover back
     if ordinal < models[0].start_day:
         if fill_begin:
-            return models[0].class_vals[np.argsort(-classprobs(models[0], ordinal))[rank]]
+            return modelclass(models[0], ordinal, rank)
         return dfcmap['lc_insuff']
 
     # ord date after time series models -> cover forward
     if ordinal > models[-1].end_day:
         if fill_end:
-            return models[-1].class_vals[np.argsort(-classprobs(models[-1], ordinal))[rank]]
+            return modelclass(models[-1], ordinal, rank)
         return dfcmap['lc_insuff']
 
     prev_end = 0
     prev_br = 0
     prev_class = 0
     for m in models:
-        curr_class = m.class_vals[np.argsort(-classprobs(m, ordinal))[rank]]
+        curr_class = modelclass(m, ordinal, rank)
         # Date is contained within the model
         if m.start_day <= ordinal <= m.end_day:
             return curr_class
@@ -247,8 +328,7 @@ def landcover_conf(models: Sequence, ordinal: int, rank: int, dfcmap: dict=_dfc,
     prev_end = 0
     prev_class = 0
     for m in models:
-        probs = classprobs(m, ordinal)
-        curr_class = m.class_vals[np.argsort(-probs)[rank]]
+        curr_class = modelclass(m, ordinal, rank)
         # Date is contained within the model
         if m.start_day <= ordinal <= m.end_day:
             # Annualized classification mucking jazz
@@ -256,7 +336,7 @@ def landcover_conf(models: Sequence, ordinal: int, rank: int, dfcmap: dict=_dfc,
                 return dfcmap['lcc_growth']
             elif decline(m):
                 return dfcmap['lcc_decline']
-            return int(probs[np.argsort(-probs)[rank]] * 100)
+            return scaleprob(modelprob(m, ordinal, rank))
         # Same land cover fill
         elif fill_samelc and curr_class == prev_class and prev_end < ordinal < m.start_day:
             return dfcmap['lccf_samelc']
