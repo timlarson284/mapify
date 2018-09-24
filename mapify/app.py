@@ -2,18 +2,17 @@
 # this is mainly used for holding the confidence values and such used in the
 # land cover layers.
 # lc -> Land Cover layers
-# lcc -> Land Cover Confidence layers
-# lccf -> Land Cover Confidence layers (fill techniques)
+# lcc -> Land Cover Confidence value
 dfc = {'lc_inbtw': 9,   # default value for between models
        'lc_insuff': 10,  # insufficient data, such as at the end of a time series
        'lcc_growth': 151,
        'lcc_decline': 152,
-       'lccf_nomodel': 201,
-       'lccf_forwards': 202,
-       'lccf_samelc': 211,
-       'lccf_difflc': 212,
-       'lccf_back': 213,
-       'lccf_afterbr': 214,
+       'lcc_nomodel': 201,
+       'lcc_forwards': 202,
+       'lcc_samelc': 211,
+       'lcc_difflc': 212,
+       'lcc_back': 213,
+       'lcc_afterbr': 214,
        }
 
 lc_map = {'develop': 1,

@@ -62,7 +62,7 @@ def sortmodels(models: Sequence, key: str='start_day') -> list:
     return sorted(models, key=attrgetter(key))
 
 
-@lru_cache()
+# @lru_cache()
 def modelprobs(model: CCDCModel, ordinal: int) -> np.ndarray:
     """
     Simple function to extract the class probabilities that go with the associated
@@ -125,7 +125,7 @@ def decline(model: CCDCModel, lc_mapping: dict=_lc_map) -> bool:
     return False
 
 
-@lru_cache()
+# @lru_cache()
 def rankidx(model: CCDCModel, ordinal: int, rank: int) -> int:
     """
     Find the index of a given rank relative to the probabilities.
@@ -143,7 +143,7 @@ def rankidx(model: CCDCModel, ordinal: int, rank: int) -> int:
     return np.argsort(-modelprobs(model, ordinal))[rank]
 
 
-@lru_cache()
+# @lru_cache()
 def modelprob(model: CCDCModel, ordinal: int, rank: int) -> float:
     """
     Provide the probability at the given rank (0, 1, 3 ...). This function
@@ -163,7 +163,7 @@ def modelprob(model: CCDCModel, ordinal: int, rank: int) -> float:
     return modelprobs(model, ordinal)[rankidx(model, ordinal, rank)]
 
 
-@lru_cache()
+# @lru_cache()
 def scaleprob(prob: float, factor: float=100) -> int:
     """
     Provide consistent scaling of values into integer space. This maintains a
@@ -184,7 +184,7 @@ def scaleprob(prob: float, factor: float=100) -> int:
     return int(prob)
 
 
-@lru_cache()
+# @lru_cache()
 def modelclass(model: CCDCModel, ordinal: int, rank: int) -> int:
     """
     Provide the class value at the given rank (0, 1, 2, 3 ...). This function
@@ -278,8 +278,7 @@ def landcover(models: Sequence, ordinal: int, rank: int, dfcmap: dict=_dfc,
 
 
 def landcover_conf(models: Sequence, ordinal: int, rank: int, dfcmap: dict=_dfc,
-                   fill_begin: bool=True, fill_end: bool=True, fill_samelc: bool=True,
-                   fill_difflc: bool=True, fill_nodata: bool=True, **kwargs) -> int:
+                   **kwargs) -> int:
     """
     Given a sequence of CCDC models representing pixel history and an ordinal date,
     what is the Primary Land Cover Confidence value?
@@ -291,39 +290,23 @@ def landcover_conf(models: Sequence, ordinal: int, rank: int, dfcmap: dict=_dfc,
             0 - primary, 1- secondary, 2 - tertiary ...
         dfcmap: data format mapping, determines what values to assign for the
             various conditionals that could occur
-        fill_begin: if the date falls before a known segment,
-            use the first segment's value
-        fill_end: if the date falls after all segments have ended,
-            use the last segment's value
-        fill_samelc: if the date falls between two segments,
-            and they have the same class, use that class
-        fill_difflc: if the date falls between two segments,
-            if the date falls before the break date of the first segment, then use the first,
-            if the date falls after the break date, then use the second
-        fill_nodata: whether fill where there is no models at all
 
     Returns:
         primary land cover confidence value
     """
     if ordinal <= 0 or not models:
-        if fill_nodata:
-            return dfcmap['lccf_nomodel']
-        return 0
+        return dfcmap['lcc_nomodel']
 
-    # ord date before time series models -> cover back
+    # ord date before time series models
     if ordinal < models[0].start_day:
-        if fill_begin:
-            return dfcmap['lccf_back']
-        return 0
+        return dfcmap['lcc_back']
 
-    # ord date after time series models -> cover forward
+    # ord date after time series models
     if ordinal > models[-1].end_day:
-        if fill_end:
-            if models[-1].change_prob == 1:
-                return dfcmap['lccf_afterbr']
+        if models[-1].change_prob == 1:
+            return dfcmap['lcc_afterbr']
 
-            return dfcmap['lccf_forwards']
-        return 0
+        return dfcmap['lcc_forwards']
 
     prev_end = 0
     prev_class = 0
@@ -337,17 +320,15 @@ def landcover_conf(models: Sequence, ordinal: int, rank: int, dfcmap: dict=_dfc,
             elif decline(m):
                 return dfcmap['lcc_decline']
             return scaleprob(modelprob(m, ordinal, rank))
-        # Same land cover fill
-        elif fill_samelc and curr_class == prev_class and prev_end < ordinal < m.start_day:
-            return dfcmap['lccf_samelc']
-        # Different land cover fill, prev model end -> current model start
-        elif fill_difflc and prev_end <= ordinal < m.start_day:
-            return dfcmap['lccf_difflc']
+        elif curr_class == prev_class and prev_end < ordinal < m.start_day:
+            return dfcmap['lcc_samelc']
+        elif prev_end <= ordinal < m.start_day:
+            return dfcmap['lcc_difflc']
 
         prev_end = m.end_day
         prev_class = curr_class
 
-    return 0
+    raise ValueError
 
 
 def crosswalk(inarr: np.ndarray, xwalkmap: dict=_nlcdxwalk, **kwargs) -> np.ndarray:
@@ -420,18 +401,12 @@ def lc_secondary(models: Sequence, ordinal: int, dfcmap: dict=_dfc,
                      fill_difflc, fill_nodata, fill_nodataval, **kwargs)
 
 
-def lc_primaryconf(models: Sequence, ordinal: int, dfcmap: dict=_dfc,
-                   fill_begin: bool=True, fill_end: bool=True, fill_samelc: bool=True,
-                   fill_difflc: bool=True, fill_nodata: bool=True, **kwargs) -> int:
-    return landcover_conf(models, ordinal, 0, dfcmap, fill_begin, fill_end,
-                          fill_samelc, fill_difflc, fill_nodata)
+def lc_primaryconf(models: Sequence, ordinal: int, dfcmap: dict=_dfc, **kwargs) -> int:
+    return landcover_conf(models, ordinal, 0, dfcmap)
 
 
-def lc_secondaryconf(models: Sequence, ordinal: int, dfcmap: dict=_dfc,
-                     fill_begin: bool=True, fill_end: bool=True, fill_samelc: bool=True,
-                     fill_difflc: bool=True, fill_nodata: bool=True, **kwargs) -> int:
-    return landcover_conf(models, ordinal, 1, dfcmap, fill_begin, fill_end,
-                          fill_samelc, fill_difflc, fill_nodata)
+def lc_secondaryconf(models: Sequence, ordinal: int, dfcmap: dict=_dfc, **kwargs) -> int:
+    return landcover_conf(models, ordinal, 1, dfcmap)
 
 
 def lc_fromto(models: Sequence, ordinal: int, dfcmap: dict=_dfc,
