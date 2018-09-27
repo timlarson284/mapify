@@ -77,7 +77,7 @@ def modelprobs(model: CCDCModel, ordinal: int) -> np.ndarray:
     Returns:
         class probabilities
     """
-    if model.class_split > 0 and model.class_split >= ordinal:
+    if 0 < model.class_split <= ordinal:
         return model.class_probs2
     else:
         return model.class_probs1
@@ -202,6 +202,10 @@ def modelclass(model: CCDCModel, ordinal: int, rank: int) -> int:
         class value at the rank
     """
     return model.class_vals[rankidx(model, ordinal, rank)]
+
+
+def noclass(model: CCDCModel, ordinal: int, rank: int) -> bool:
+    return modelclass(model, ordinal, rank) == 0
 
 
 def landcover(models: Sequence, ordinal: int, rank: int, dfcmap: dict=_dfc,
