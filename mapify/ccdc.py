@@ -210,6 +210,9 @@ def unify(ccd: dict, classified: list) -> List[CCDCModel]:
         unified CCDC models
     """
     models = []
+
+    if ccd is None:
+        return models
     # log.debug(len(classified))
     # log.debug(len(ccd['change_models']))
     for change in ccd['change_models']:
