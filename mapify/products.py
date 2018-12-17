@@ -244,14 +244,20 @@ def landcover(models: Sequence, ordinal: int, rank: int, dfcmap: dict=_dfc,
             return fill_nodataval
         return dfcmap['lc_insuff']
 
-    # ord date before time series models -> cover back
-    if ordinal < models[0].start_day:
+    # ord date before time series models -> cover back, and skip unclassified start fits
+    skip_start = modelclass(models[0], ordinal, rank) == -1
+    if ordinal < models[0].start_day or skip_start:
+        if fill_begin and skip_start:
+            return modelclass(models[1], ordinal, rank)
         if fill_begin:
             return modelclass(models[0], ordinal, rank)
         return dfcmap['lc_insuff']
 
-    # ord date after time series models -> cover forward
+    # ord date after time series models -> cover forward, and skip unclassified end fits
+    skip_end = modelclass(models[-1], ordinal, rank) == -1
     if ordinal > models[-1].end_day:
+        if fill_end and skip_end:
+            return modelclass(models[-2], ordinal, rank)
         if fill_end:
             return modelclass(models[-1], ordinal, rank)
         return dfcmap['lc_insuff']

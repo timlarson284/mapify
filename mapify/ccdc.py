@@ -169,9 +169,9 @@ def buildccdc(chgmodel: dict, cl1model: dict=None,
                          curve_qa=chgmodel['curve_qa'],
                          bands=tuple(bands),
                          class_split=0,
-                         class_probs1=np.zeros(shape=(8,)),
-                         class_probs2=np.zeros(shape=(8,)),
-                         class_vals=tuple([0] * 9))
+                         class_probs1=np.full((8,), -1),
+                         class_probs2=np.full((8,), -1),
+                         class_vals=tuple([-1] * 9))
     elif cl2model is None:
         return CCDCModel(start_day=chgmodel['start_day'],
                          end_day=chgmodel['end_day'],
@@ -182,7 +182,7 @@ def buildccdc(chgmodel: dict, cl1model: dict=None,
                          bands=tuple(bands),
                          class_split=0,
                          class_probs1=np.array(cl1model['class_probs']),
-                         class_probs2=np.zeros(shape=(8,)),
+                         class_probs2=np.full((8,), -1),
                          class_vals=cl1model['class_vals'])
     else:
         return CCDCModel(start_day=chgmodel['start_day'],
