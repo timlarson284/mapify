@@ -116,7 +116,12 @@ def ordme(date: str) -> int:
 
 
 def nlcdchip(path: str, chip_x: float, chip_y: float) -> np.ndarray:
-    return readxy(path, chip_x, chip_y, 100, 100)
+    data = readxy(path, chip_x, chip_y, 100, 100)
+
+    if data is None:
+        data = np.zeros(shape=(100, 100))
+
+    return data
 
 
 def neednlcd(name: str, fill_nomodel: bool) -> bool:
