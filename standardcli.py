@@ -67,15 +67,6 @@ def makekwargs_prime(args: argparse.Namespace) -> dict:
             'xwalk': args.xwalk}
 
 
-def makekwargs_second(args: argparse.Namespace) -> dict:
-    return {'fill_begin': False,
-            'fill_end': False,
-            'fill_samelc': False,
-            'fill_difflc': False,
-            'fill_nomodel': False,
-            'xwalk': args.xwalk}
-
-
 def single(args: argparse.Namespace) -> None:
     pass
 
@@ -156,10 +147,7 @@ def worker(inq: mp.Queue, outq: mp.Queue, args: argparse.Namespace):
 
         out = {}
         for prod in prods:
-            if prod in ('LC_Secondary', 'LC_SecondConf'):
-                kwargs = makekwargs_second(args)
-            else:
-                kwargs = makekwargs_prime(args)
+            kwargs = makekwargs_prime(args)
 
             if prod not in out:
                 out[prod] = {}
