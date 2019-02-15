@@ -765,3 +765,41 @@ def lc_color() -> gdal.ColorTable:
                 ct.SetColorEntry(int(f'{i}{j}'), (162, 1, 255, 0))  # Different class
 
     return ct
+
+def lc_color_full_legend() -> gdal.ColorTable:
+    """
+    Provide a default NLCD full-legend color table for Land Cover thematic products.
+
+    Returns:
+        color table
+    """
+    ct = gdal.ColorTable()
+    ct.SetColorEntry(0, (0, 0, 0, 0))  # Black No data
+    ct.SetColorEntry(11, (71,107,161, 0))	#Open Water						
+    ct.SetColorEntry(12, (210,222,250, 0))	#Ice/Snow						
+    ct.SetColorEntry(21, (222,202,202, 0))	#Developed, open space						
+    ct.SetColorEntry(22, (217,148,131, 0))	#Developed, Low Intensity						
+    ct.SetColorEntry(23, (238,0,0, 0))		#Developed, Med Intensity				
+    ct.SetColorEntry(24, (171,0,0, 0))		#Developed, High Intesnity				
+    ct.SetColorEntry(31, (179,174,164, 0))	#Barren						
+    ct.SetColorEntry(41, (104,171,99, 0))	#Deciduous Forest						
+    ct.SetColorEntry(42, (28,99,48, 0))		#Evergreen Forest					
+    ct.SetColorEntry(43, (182,202,143, 0))	#Mixed Forest						
+    ct.SetColorEntry(51, (166,141,48, 0))	#Dwarf Shrub						
+    ct.SetColorEntry(52, (205,187,124, 0))	#Shrub/Scrub						
+    ct.SetColorEntry(71, (227,227,194, 0))	#Grassland/Herbaceous					
+    ct.SetColorEntry(72, (202,202,119, 0))	#Sedge/Herbaceous
+    ct.SetColorEntry(73, (154,194,71, 0))	#Lichens (Alaska Only)
+    ct.SetColorEntry(74, (119,174,148, 0))	#Moss (Alaska Only)						
+    ct.SetColorEntry(81, (220,217,61, 0))	#Pasture/Hay						
+    ct.SetColorEntry(82, (171,112,40, 0))	#Cultivated Crops						
+    ct.SetColorEntry(90, (187,217,235, 0))	#Woody Wetlands						
+    ct.SetColorEntry(95, (112,164,187, 0))	#Emergent Herbaceous Wetlands						
+    
+    for i in range(1, 100):
+    	if i not in (11, 12, 21, 22, 23, 24, 31, 41, 42, 43, 51, 52, 71, 72, 73, 74, 81, 82, 90, 95):
+    		ct.SetColorEntry(i, (162, 1, 255, 0)) #other value
+    
+    return ct
+
+    
